@@ -22,18 +22,6 @@ public:
 				values[i][j] = init;
 	}
 	
-	matrix(istream& is) {
-		string s;
-		values = new T*[rows];
-		for (int i = 0; i < rows; i++)
-			values[i] = new T[cols];
-		for (int i = 0; i < rows; i++) {
-			for (int j = 0; j < cols; j++) {
-				values[i][j] = is.get();
-			}
-			getline(is, s);
-		}
-	}
 
 	matrix(const matrix& m) {
 		values = new T*[rows];
