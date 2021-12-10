@@ -72,7 +72,7 @@ public:
 		return *this;
 	}
 
-	bool isInRange(int i, int j) {
+	bool isInRange(int i, int j) const {
 		return 0 <= i && i < rows && 0 <= j && j < cols;
 	}
 
