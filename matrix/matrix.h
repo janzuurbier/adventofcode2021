@@ -73,7 +73,7 @@ public:
 	}
 
 	bool isInRange(int i, int j) const {
-		return 0 <= i && i < rows && 0 <= j && j < cols;
+		return 0 <= i && i < cols && 0 <= j && j < rows;
 	}
 
 	int getRows() {
