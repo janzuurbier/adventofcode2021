@@ -6,10 +6,10 @@
 #include <vector>
 #include <sstream>
 #include <fstream>
-#include <set>
+//#include <set>
 //#include <stack>
 //#include "../matrix/matrix.h"
-#include <algorithm>
+//#include <algorithm>
 
 using namespace std;
 
@@ -21,16 +21,10 @@ public:
 	int rightval = -1;
 	number_t* leftnumber = nullptr;
 	number_t* rightnumber = nullptr;
-	number_t* parent;
-	bool hasexploded = false;
 
+	number_t() : leftval(-1), rightval(-1),  leftnumber(nullptr), rightnumber(nullptr) {}
 
-
-	number_t() : leftval(-1), rightval(-1),  leftnumber(nullptr), rightnumber(nullptr), parent(nullptr), hasexploded(false) {}
-
-	number_t(number_t* parent) : leftval(-1), rightval(-1), leftnumber(nullptr), rightnumber(nullptr), parent(parent), hasexploded(false) {}
-
-	number_t(const number_t& other_number) : leftval(other_number.leftval), rightval(other_number.rightval), parent(other_number.parent), hasexploded(false) {
+	number_t(const number_t& other_number) : leftval(other_number.leftval), rightval(other_number.rightval) {
 		if (other_number.leftnumber != nullptr) {
 			leftnumber = new number_t(*other_number.leftnumber);
 		}
@@ -43,7 +37,7 @@ public:
 
 	}
 
-	number_t(string s) :leftval(-1), rightval(-1), leftnumber(nullptr), rightnumber(nullptr), parent(nullptr), hasexploded(false) {
+	number_t(string s) :leftval(-1), rightval(-1), leftnumber(nullptr), rightnumber(nullptr) {
 		stringstream buffer(s);
 		buffer >> *this;
 	}
@@ -52,20 +46,20 @@ public:
 		if (leftnumber != nullptr) {
 			if (leftnumber->leftnumber != nullptr) delete leftnumber->leftnumber;
 			if (leftnumber->rightnumber != nullptr) delete leftnumber->rightnumber;
+			//delete leftnumber;
 		}
-		//delete leftnumber;
 		if (rightnumber != nullptr) {
 			if (rightnumber->leftnumber != nullptr) delete rightnumber->leftnumber;
 			if (rightnumber->rightnumber != nullptr) delete rightnumber->rightnumber;
+			//delete rightnumber;
 		}
-		//delete rightnumber;
 	}
 
 	friend istream& operator>>(istream& is, number_t& number) {
 		int ch = is.get(); //openbracket
 		ch = is.peek();
 		if (ch == '[') {
-			number.leftnumber = new number_t(&number);
+			number.leftnumber = new number_t;
 			is >> *number.leftnumber;
 			number.leftval = -1;
 		}
@@ -77,7 +71,7 @@ public:
 		ch = is.get(); //komma
 		ch = is.peek();
 		if (ch == '[') {
-			number.rightnumber = new number_t(&number);
+			number.rightnumber = new number_t;
 			is >> *number.rightnumber;
 			number.rightval = -1;
 		}
@@ -87,8 +81,7 @@ public:
 			number.rightnumber = nullptr;
 		}
 		ch = is.get(); //close bracket
-		return is;
-		
+		return is;		
 	}
 
 	friend ostream& operator<<(ostream& os, const number_t& number) {
@@ -106,51 +99,64 @@ public:
 		return os;
 	}
 
-	number_t* copy(number_t* number) {
-		number_t* retval = new number_t(number->parent);
-		if (number->leftnumber != nullptr) {
-			retval->leftnumber = copy(number->leftnumber);
+	void operator+= (const number_t& rhs) {
+		if (leftnumber == nullptr) {
+			leftnumber = new number_t;
+			leftnumber->leftval = leftval;
+			leftnumber->rightval = rightval;
 		}
-		else
-			retval->leftnumber = nullptr;
-		
-		if (number->rightnumber != nullptr) {
-			retval->rightnumber = copy(number->rightnumber);
+		else {
+			number_t* p = leftnumber;
+			leftnumber = new number_t;
+			leftnumber->leftnumber = p;
+			leftnumber->rightnumber = rightnumber;
 		}
-		else
-			retval->rightnumber = nullptr;
-		retval->leftval = number->leftval;
-		retval->rightval = number->rightval;
-		
+		rightnumber = new number_t(rhs);	
+		leftval = -1;
+		rightval = -1;
+		reduce();
+	}
+
+	number_t operator+(const number_t rhs) const {
+		number_t retnumber(*this);
+		retnumber += rhs;
+		return retnumber;
+	}
+
+	bool operator==(const number_t rhs) const {
+		if (leftnumber == nullptr && rhs.leftnumber != nullptr || leftnumber != nullptr && rhs.leftnumber == nullptr) return false;
+		if (rightnumber == nullptr && rhs.rightnumber != nullptr || rightnumber != nullptr && rhs.rightnumber == nullptr) return false;
+		bool retval = true;
+		if (leftnumber == nullptr) retval = retval && (leftval == rhs.leftval); else retval = retval && (*leftnumber == *rhs.leftnumber);
+		if (rightnumber == nullptr)retval = retval && (rightval == rhs.rightval); else retval = retval && (*rightnumber == *rhs.rightnumber);
 		return retval;
 	}
 
-	number_t* add (number_t* rhs) {
-		number_t* ret = new number_t();
-		ret->leftnumber = this;
-		ret->leftnumber->parent = ret;
-		ret->rightnumber = rhs;	
-		ret->rightnumber->parent = ret;
-		ret->leftval = -1;
-		ret->rightval = -1;
-		return ret;
+	bool operator !=(const number_t rhs) const {
+		return !(*this == rhs);
 	}
 
-	void split() {
-		if (leftnumber == nullptr && leftval > 10) {
-			leftnumber = new number_t(this);
+	bool split() {
+		bool haschanged = false;
+		if (leftnumber == nullptr && leftval >= 10) {
+			leftnumber = new number_t;
 			leftnumber->leftval = leftval / 2;
 			leftnumber->rightval = leftval - leftnumber->leftval;
+			haschanged = true;
 		}
 		else
-			if(leftnumber != nullptr) leftnumber->split();
-		if (rightnumber == nullptr && rightval > 10) {
-			rightnumber = new number_t(this);
-			rightnumber->leftval = rightval / 2;
-			rightnumber->rightval = rightval - rightnumber->leftval;
+			if(leftnumber != nullptr ) haschanged = leftnumber->split();
+		if (!haschanged) {
+			if (rightnumber == nullptr && rightval >= 10) {
+				rightnumber = new number_t;
+				rightnumber->leftval = rightval / 2;
+				rightnumber->rightval = rightval - rightnumber->leftval;
+				haschanged = true;
+			}
+			else
+				if (rightnumber != nullptr) haschanged = haschanged || rightnumber->split();
 		}
-		else
-			if (rightnumber != nullptr) rightnumber->split();
+		return haschanged;
 	}
 
 
@@ -168,83 +174,69 @@ public:
 			rightnumber->add_val_right(val);
 	}
 
-	bool explode(int level) {
-		if (hasexploded ) return false;
-		bool changed = false;
-		if (rightnumber == nullptr && leftnumber == nullptr && parent != nullptr && level >= 4) {	
-			int a = leftval;
-			int b = rightval;
-			hasexploded = true;
-			if (this == parent->leftnumber){
-				if (parent->rightnumber == nullptr)
-					parent->rightval += b;
-				else
-					parent->rightnumber->add_val_left(b);
-								
-				
-				number_t* temp = this;
-				while ( temp->parent != nullptr && temp->parent->leftnumber == temp)
-					temp = temp->parent;
-				if (temp->parent != nullptr && temp->parent->leftnumber != temp) {
-					temp = temp->parent;
-					if (temp != nullptr && temp->leftnumber == nullptr)
-						temp->leftval += a;
-					else
-						temp->leftnumber->add_val_right(a);
-				}
-					
-				
-				parent->leftval = 0;
-				parent->leftnumber = nullptr;	
-			}
-			if (this == parent->rightnumber) {
-				if (parent->leftnumber == nullptr)
-					parent->leftval += a;
-				else
-					parent->leftnumber->add_val_right(a);				
-		
-				number_t* temp = this;
-				while (temp->parent != nullptr && temp->parent->rightnumber == temp)
-					temp = temp->parent;
-				if (temp->parent != nullptr && temp->parent->rightnumber != temp) {
-					temp = temp->parent;
-					if (temp != nullptr && temp->rightnumber == nullptr)
-						temp->rightval += b;
-					else
-						temp->rightnumber->add_val_left(b);
-				}
-				
-				parent->rightnumber = nullptr;
-				parent->rightval = 0;
-			}	
-			parent = parent->parent;
-			changed = true;
-		}
-		if (leftnumber != nullptr) 
-			changed = ( leftnumber->explode(level + 1) || changed);
-		if (rightnumber != nullptr)
-			changed = ( rightnumber->explode(level + 1) || changed);
-		return changed;
-	}
+	struct uitkomst {
+		int first;
+		int second;
+		bool haschanged;
 
-	void clear() {
-		hasexploded = false;
-		if (leftnumber != nullptr) leftnumber->clear();
-		if (rightnumber != nullptr) rightnumber->clear();
+	};
+
+	uitkomst explode(int level = 0) {
+		uitkomst u;
+		u.haschanged = false;
+		if (leftnumber == nullptr && rightnumber == nullptr && level >= 4) {
+			u.first = leftval; 
+			u.second = rightval;
+		}
+		if (leftnumber != nullptr && !u.haschanged) {
+			uitkomst p = leftnumber->explode(level + 1);
+			u.haschanged = u.haschanged || p.haschanged;
+			u.first = p.first;
+			u.second = -1;
+			if (p.second > 0) {
+				if (rightnumber == nullptr) rightval += p.second; else rightnumber->add_val_left(p.second);
+			}		
+			if (p.first >= 0 && p.second >= 0) {
+				leftval = 0;
+				leftnumber = nullptr;
+				u.haschanged = true;
+			}
+		}
+		if (rightnumber != nullptr && !u.haschanged){
+			uitkomst p = rightnumber->explode(level + 1);
+			u.haschanged = u.haschanged || p.haschanged;
+			if (p.first > 0) {
+				if (leftnumber == nullptr) leftval += p.first; else leftnumber->add_val_right(p.first);
+			}
+			u.first = -1;
+			u.second = p.second;
+			if (p.first >= 0 && p.second >= 0) {
+				rightval = 0;
+				rightnumber = nullptr;
+				u.haschanged = true;
+			}
+		}
+		return u;
 	}
 
 	void reduce() {
-		while (explode(0)) {
-			split();
-			clear();
+		bool haschanged = true;
+		while (haschanged) {
+			while (haschanged) {
+				//cout << *this << endl;
+				uitkomst u = explode();
+				haschanged = u.haschanged;
+			}
+			//cout << *this << endl;
+			haschanged = split();			
 		}
 	}
 
-
-
-
-
-
+	int magnitude() {
+		int a = leftnumber == nullptr ? leftval : leftnumber->magnitude();
+		int b = rightnumber == nullptr ? rightval : rightnumber->magnitude();
+		return 3 * a + 2 * b;
+	}
 };
 
 
@@ -256,25 +248,35 @@ int main()
 		return 1;
 	}
 
+	vector<number_t> numbers;
 	string line;
-	getline(input, line);
-	number_t number(line);
-	number_t* n = &number;
 	while (getline(input, line)) {
-		number_t other_number(line);
-		n = n->add(&other_number);
-		cout << *n << endl;
-		n->reduce();
-		cout << *n << endl;
+		number_t number(line);
+		numbers.push_back(number);	
 	}
-	
-	
-	
-	
-	
 
-	return 0;
-	
+	int max = 0;
+	int index1 = 0, index2 = 0;
+	for (int i = 0; i < numbers.size(); i++)
+		for (int j = i + 1; j < numbers.size(); j++) {
+			int sum = (numbers[i] + numbers[j]).magnitude();
+			if ( sum > max) {
+				max = sum;
+				index1 = i;
+				index2 = j;
+			}
+			sum = (numbers[j] + numbers[i]).magnitude();
+			if (sum > max) {
+				max = sum;
+				index1 = j;
+				index2 = i;
+			}
+		}
+	cout << numbers[index1] << endl;
+	cout << numbers[index2] << endl;
+	cout << max;
+
+	return 0;	
 }
 
 //

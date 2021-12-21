@@ -12,6 +12,9 @@
 
 using namespace std;
 
+const int N = 100;
+const int A = 50;
+
 int main()
 {
 	ifstream input("C:\\Users\\Jan\\Desktop\\input.txt");
@@ -20,11 +23,48 @@ int main()
 		return 1;
 	}
 
-	string line;
-	while (getline(input, line)) {
-
-
+	string line = "";
+	string l;
+	while (true) {
+		getline(input, l);
+		if (l.size() == 0) break;
+		line += l;
 	}
+	cout << line.size() << endl;
+
+	matrix<char, N, N> temp('.');
+	input >> temp;
+
+	matrix<char, N + 2*A, N + 2*A>  m('.');
+	for(int i = 0; i < N ; i++)
+		for (int j = 0; j < N ; j++) {
+			m[i + A][j + A] = temp[i][j];
+		}
+
+	for (int k = 1; k <= A; k++) {
+		matrix<char, N + 2 * A, N + 2 * A> n = m;
+		for (int i = 0; i < N + 2*A; i++)
+			for (int j = 0; j < N + 2*A; j++) {
+				int a = 0;
+				for (int p = i - 1; p <= i + 1; p++)
+					for (int q = j - 1; q <= j + 1; q++) {
+						a *= 2;
+						if (m.isInRange(p, q) && m[p][q] == '#' || !m.isInRange(p,q) && k%2 == 0) a += 1;
+					}
+				n[i][j] = line[a];
+			}
+		m = n;
+	}
+	
+	int b = 0;
+	for (int i = 0; i < N + 2*A; i++)
+		for (int j = 0; j < N + 2*A; j++) {
+			if (m[i][j] == '#')
+				b++;
+		}
+	cout << b << endl;
+
+	return 0;
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
