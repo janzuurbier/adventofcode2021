@@ -16,7 +16,6 @@ using namespace std;
 
 const int ROWS = 7;
 const int COLS = 13;
-const int N = 19;
 typedef  matrix<char, ROWS, COLS> burrow;
 
 struct pos {
@@ -33,20 +32,17 @@ struct pos {
 };
 
 vector<pos> posities;
-map<pos, int> posnr;
 map<char, int> roomnr;
 map<char, int> stepcost;
 
 
 struct mv {
-	int from, to;
+	pos from, to;
 
-	mv(int f = 0, int t = 0) : from(f), to(t) {}
+	mv(pos p, pos q) : from(p), to(q) {}
 
 	int get_steps() {
-		pos p = posities[from];
-		pos q = posities[to];
-		return p.row - 1 + abs(p.col - q.col) + q.row - 1;
+		return from.row - 1 + abs(from.col - to.col) + to.row - 1;
 	}
 };
 
@@ -56,65 +52,65 @@ vector<mv> find_moves(const burrow& b){
 		char ch = b[p.row][p.col];
 		if ('A' <= ch && ch <= 'D') {
 			if (p.row == 1) {
-				bool canmove = true;
+				bool canmove_to_hall = true;
 				if (p.col < roomnr[ch]) {
-					for (int i = p.col + 1; i <= roomnr[ch] && canmove; i++)
+					for (int i = p.col + 1; i <= roomnr[ch] && canmove_to_hall; i++)
 						if (b[1][i] != '.')
-							canmove = false;
+							canmove_to_hall = false;
 				}
 				else if (p.col > roomnr[ch]) {
-					for (int i = p.col - 1; i >= roomnr[ch] && canmove; i--)
+					for (int i = p.col - 1; i >= roomnr[ch] && canmove_to_hall; i--)
 						if (b[1][i] != '.')
-							canmove = false;
+							canmove_to_hall = false;
 				}
-				if (canmove) {
+				if (canmove_to_hall) {
 					int i = ROWS - 2;
 					while (b[i][roomnr[ch]] == ch)
 						i--;
-					if (i != 1 && b[i][roomnr[ch]] == '.') v.push_back(mv(posnr[p], posnr[pos(i, roomnr[ch])]));
+					if (i != 1 && b[i][roomnr[ch]] == '.') v.push_back(mv(p, pos(i, roomnr[ch])));
 				}
 			}
 			if (p.row > 1 && b[p.row - 1][p.col] == '.') {
-				bool canmove = true;
-				bool canmovedirect = true;
+				bool canmove_to_hall = true;
+				bool canmove_to_room = true;
 				
 				if (p.col == roomnr[ch]) {
-					canmovedirect = false;
+					canmove_to_room = false;
 					int i = p.row;
 					while (b[i][p.col] == ch) i++;
 					if (i == ROWS - 1)
-						canmove = false;
+						canmove_to_hall = false;
 				}
 				if ( p.col != roomnr[ch]) {					
 					if (p.col < roomnr[ch]) {
-						for (int i = p.col + 1; i <= roomnr[ch] && canmovedirect; i++)
+						for (int i = p.col + 1; i <= roomnr[ch] && canmove_to_room; i++)
 							if (b[1][i] != '.')
-								canmovedirect = false;
+								canmove_to_room = false;
 					}
 					else if (p.col > roomnr[ch]) {
-						for (int i = p.col - 1; i >= roomnr[ch] && canmovedirect; i--)
+						for (int i = p.col - 1; i >= roomnr[ch] && canmove_to_room; i--)
 							if (b[1][i] != '.')
-								canmovedirect = false;
+								canmove_to_room = false;
 					}
-					if (canmovedirect) {
+					if (canmove_to_room) {
 						int i = ROWS - 2;
 						while (b[i][roomnr[ch]] == ch)
 							i--;
 						if (i != 1 && b[i][roomnr[ch]] == '.') 
-							v.push_back(mv(posnr[p], posnr[pos(i, roomnr[ch])]));
+							v.push_back(mv(p, pos(i, roomnr[ch])));
 						else 
-							canmovedirect = false;
+							canmove_to_room = false;
 					}
 				}
-				if (canmove && !canmovedirect) {
+				if (canmove_to_hall && !canmove_to_room) {
 					int i = p.col - 1;
 					while (b[1][i] == '.' ) {
-						if (i != 3 && i != 5 && i != 7 && i != 9) v.push_back(mv(posnr[p], posnr[pos(1, i)]));
+						if (i != 3 && i != 5 && i != 7 && i != 9) v.push_back(mv(p, pos(1, i)));
 						i--;
 					}
 					i = p.col + 1;
 					while (b[1][i] == '.') {
-						if (i != 3 && i != 5 && i != 7 && i != 9)v.push_back(mv(posnr[p], posnr[pos(1, i)]));
+						if (i != 3 && i != 5 && i != 7 && i != 9)v.push_back(mv(p, pos(1, i)));
 						i++;
 					}
 				}
@@ -124,26 +120,19 @@ vector<mv> find_moves(const burrow& b){
 	return v;
 }
 
-uint32_t least_energy(burrow& b) {
-	bool ready = true;
-	for (char ch = 'A'; ready && ch <= 'D'; ch++) {
-		for (int i = 2; ready && i < ROWS - 1; i++)
-			if (b[i][roomnr[ch]] != ch) ready = false;
-	}
-	if (ready) return 0;
+uint32_t least_energy(burrow& b,  burrow& end) {
+	if (b == end) return 0;
 	vector<mv> moves = find_moves(b);
-	if (moves.size() == 0) return INT32_MAX;
-	uint32_t min = UINT32_MAX;
+	if (moves.size() == 0) return 1000000;
+	uint32_t min = 1000000;
 	for (mv& m : moves) {
-		pos p = posities[m.from];
-		pos q = posities[m.to];
-		char ch = b[p.row][p.col];
+		char ch = b[m.from.row][m.from.col];
 		uint32_t energy = stepcost[ch] * m.get_steps();		
-		b[p.row][p.col] = '.';
-		b[q.row][q.col] = ch;
-		energy += least_energy(b);
-		b[p.row][p.col] = ch;
-		b[q.row][q.col] = '.';
+		b[m.from.row][m.from.col] = '.';
+		b[m.to.row][m.to.col] = ch;
+		energy += least_energy(b, end);
+		b[m.from.row][m.from.col] = ch;
+		b[m.to.row][m.to.col] = '.';
 		if (energy < min) {
 			min = energy;
 		}
@@ -162,11 +151,12 @@ int main()
 
 	burrow b('#');
 	input >> b;
+	burrow endburrow('#');
+	input >> endburrow;
 
 	for (int i = 0; i < ROWS; i++)
 		for (int j = 0; j < COLS; j++) 
 			if (b[i][j] != '#') {
-				posnr[pos(i, j)] = posities.size();
 				posities.push_back(pos(i, j));	
 			}
 
@@ -181,6 +171,6 @@ int main()
 	stepcost['D'] = 1000;
 
 
-	cout << least_energy(b ) << endl;
+	cout << least_energy(b, endburrow ) << endl;
 
 }
