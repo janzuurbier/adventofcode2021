@@ -4,111 +4,141 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <map>
 #include <sstream>
 #include <fstream>
-#include <set>
+//#include <set>
 //#include <stack>
-//#include "../matrix/matrix.h"
-#include <algorithm>
+#include "../matrix/matrix.h"
+//#include <algorithm>
 
 using namespace std;
 
-	int w = 0, x = 0, y = 0, z = 0;
+const int ROWS = 7;
+const int COLS = 13;
+typedef  matrix<char, ROWS, COLS> burrow;
 
-	vector<string> instructions;
+struct pos {
+	int row;
+	int col;
 
-	void process_instruction(string s) {
-		
-		string instruction;
-		char var;
-		int val;
+	pos(int r, int c) : row(r), col(c) {}
 
-		istringstream iss(s);
-		iss >> instruction >> var;
-		if (instruction != "inp") {
-			string temp;
-			iss >> temp;
-			if ('0' <= temp[0] && temp[0] <= '9' || temp[0] == '-') val = stoi(temp);
-			else if (temp[0] == 'w') val = w;
-			else if (temp[0] == 'x') val = x;
-			else if (temp[0] == 'y') val = y;
-			else if (temp[0] == 'z') val = z;
-			else cout << "error at " << s << endl;
-		}
+	bool operator<(const pos& p) const {
+		if (row < p.row) return true;
+		if (row == p.row && col < p.col) return true;
+		return false;
+	}
+};
 
-		if (instruction == "inp") {
-			char ch;
-			cin >> ch;
-			switch (var) {
-			case 'w': w = ch - 48; break;
-			case 'x': x = ch - 48; break;
-			case 'y': y = ch - 48; break;
-			case 'z': z = ch - 48; break;
-			default: cout << "error at " << s << endl;
-			}
-		}
-		else if (instruction == "mul") {
-			switch (var) {
-			case 'w': w *= val; break;
-			case 'x': x *= val; break;
-			case 'y': y *= val; break;
-			case 'z': z *= val; break;
-			default: cout << "error at " << s << endl;
-			}
-		}
-		else if (instruction == "add") {
-			switch (var) {
-			case 'w': w += val; break;
-			case 'x': x += val; break;
-			case 'y': y += val; break;
-			case 'z': z += val; break;
-			default: cout << "error at " << s << endl;
-			}
-		} 
-		else if (instruction == "div") {
-			if (val == 0) 
-				cout << "division by zero" << endl;
-			else
-				switch (var) {
-				case 'w': w /= val; break;
-				case 'x': x /= val; break;
-				case 'y': y /= val; break;
-				case 'z': z /= val; break;
-				default: cout << "error at " << s << endl;
+vector<pos> posities;
+map<char, int> roomnr;
+map<char, int> stepcost;
+
+
+struct mv {
+	pos from, to;
+
+	mv(pos p, pos q) : from(p), to(q) {}
+
+	int get_steps() {
+		return from.row - 1 + abs(from.col - to.col) + to.row - 1;
+	}
+};
+
+vector<mv> find_moves(const burrow& b) {
+	vector<mv> v;
+	for (const pos& p : posities) {
+		char ch = b[p.row][p.col];
+		if ('A' <= ch && ch <= 'D') {
+			if (p.row == 1) {
+				bool canmove_to_hall = true;
+				if (p.col < roomnr[ch]) {
+					for (int i = p.col + 1; i <= roomnr[ch] && canmove_to_hall; i++)
+						if (b[1][i] != '.')
+							canmove_to_hall = false;
 				}
-		}
-		else if (instruction == "mod") {
-			if (val == 0)
-				cout << "division by zero" << endl;
-			else
-				switch (var) {
-				case 'w': w %= val; if (w < 0) w = -w;  break;
-				case 'x': x %= val; if (x < 0) x = -x; break;
-				case 'y': y %= val; if (y < 0) y = -y; break;
-				case 'z': z %= val; if (z < 0) z = -z; break;
-				default: cout << "error at " << s << endl;
+				else if (p.col > roomnr[ch]) {
+					for (int i = p.col - 1; i >= roomnr[ch] && canmove_to_hall; i--)
+						if (b[1][i] != '.')
+							canmove_to_hall = false;
 				}
-		}
-		else if (instruction == "eql") {
-			switch (var) {
-			case 'w': w = (w == val) ? 1 : 0; break;
-			case 'x': x = (x == val) ? 1 : 0; break;
-			case 'y': y = (y == val) ? 1 : 0; break;
-			case 'z': z = (z == val) ? 1 : 0; break;
-			default: cout << "error at " << s << endl;
+				if (canmove_to_hall) {
+					int i = ROWS - 2;
+					while (b[i][roomnr[ch]] == ch)
+						i--;
+					if (i != 1 && b[i][roomnr[ch]] == '.') v.push_back(mv(p, pos(i, roomnr[ch])));
+				}
+			}
+			if (p.row > 1 && b[p.row - 1][p.col] == '.') {
+				bool canmove_to_hall = true;
+				bool canmove_to_room = true;
+
+				if (p.col == roomnr[ch]) {
+					canmove_to_room = false;
+					int i = p.row;
+					while (b[i][p.col] == ch) i++;
+					if (i == ROWS - 1)
+						canmove_to_hall = false;
+				}
+				if (p.col != roomnr[ch]) {
+					if (p.col < roomnr[ch]) {
+						for (int i = p.col + 1; i <= roomnr[ch] && canmove_to_room; i++)
+							if (b[1][i] != '.')
+								canmove_to_room = false;
+					}
+					else if (p.col > roomnr[ch]) {
+						for (int i = p.col - 1; i >= roomnr[ch] && canmove_to_room; i--)
+							if (b[1][i] != '.')
+								canmove_to_room = false;
+					}
+					if (canmove_to_room) {
+						int i = ROWS - 2;
+						while (b[i][roomnr[ch]] == ch)
+							i--;
+						if (i != 1 && b[i][roomnr[ch]] == '.')
+							v.push_back(mv(p, pos(i, roomnr[ch])));
+						else
+							canmove_to_room = false;
+					}
+				}
+				if (canmove_to_hall && !canmove_to_room) {
+					int i = p.col - 1;
+					while (b[1][i] == '.') {
+						if (i != 3 && i != 5 && i != 7 && i != 9) v.push_back(mv(p, pos(1, i)));
+						i--;
+					}
+					i = p.col + 1;
+					while (b[1][i] == '.') {
+						if (i != 3 && i != 5 && i != 7 && i != 9)v.push_back(mv(p, pos(1, i)));
+						i++;
+					}
+				}
 			}
 		}
 	}
+	return v;
+}
 
-	void run() {
-		for (string s : instructions)
-			process_instruction(s);
-		cout << "w = " << w << endl;
-		cout << "x = " << x << endl;
-		cout << "y = " << y << endl;
-		cout << "z = " << z << endl;
-		cout << endl;
+uint32_t least_energy(burrow& b, burrow& end) {
+	if (b == end) return 0;
+	vector<mv> moves = find_moves(b);
+	if (moves.size() == 0) return 1000000;
+	uint32_t min = 1000000;
+	for (mv& m : moves) {
+		char ch = b[m.from.row][m.from.col];
+		uint32_t energy = stepcost[ch] * m.get_steps();
+		b[m.from.row][m.from.col] = '.';
+		b[m.to.row][m.to.col] = ch;
+		energy += least_energy(b, end);
+		b[m.from.row][m.from.col] = ch;
+		b[m.to.row][m.to.col] = '.';
+		if (energy < min) {
+			min = energy;
+		}
 	}
+	return min;
+}
 
 
 int main()
@@ -119,26 +149,28 @@ int main()
 		return 1;
 	}
 
-	string line;
+	burrow b('#');
+	input >> b;
+	burrow endburrow('#');
+	input >> endburrow;
 
-	
-	while (getline(input, line)) {
-		instructions.push_back(line);
-	}
+	for (int i = 0; i < ROWS; i++)
+		for (int j = 0; j < COLS; j++)
+			if (b[i][j] != '#') {
+				posities.push_back(pos(i, j));
+			}
 
-	while (true) run();
+	roomnr['A'] = 3;
+	roomnr['B'] = 5;
+	roomnr['C'] = 7;
+	roomnr['D'] = 9;
+
+	stepcost['A'] = 1;
+	stepcost['B'] = 10;
+	stepcost['C'] = 100;
+	stepcost['D'] = 1000;
 
 
-	
+	cout << least_energy(b, endburrow) << endl;
+
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
