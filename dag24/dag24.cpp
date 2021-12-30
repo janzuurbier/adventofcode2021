@@ -16,15 +16,15 @@
 //z14 = z12 div 26 = z1 div 26 = 0 (!) if w14 = z13 mod 26 = z1 mod 26 = w1 + 7 ==> w14 = w1 + 7 (7)
 //
 //All 7 conditions must be true for z14 to become zero.
-//Since w1 ... w14 are >= 1 and <= 9
-//w1 <= 2 because of (7)
-//w2 >= 7 because of (6)
-//w3 <= 5 because of (1)
-//w5 >= 3 because of (5)
-//w6 <= 4 because of (3)
-//w7 <= 6 because of (2)
-//w10 = 9 because of (4)
-//now we can choose w1 .. w14 als large (for part 1) or as small (for part 2) as possible and check it with the program below.
+//(1) w4 = w3 + 4
+//(2) w8 = w7 + 3
+//(3) w9 = w6 + 5
+//(4) w11 = w10 - 8
+//(5) w12 - w5 - 2
+//(6) w13 = w2 - 6
+//(7) w14 = w1 + 7
+//now we can choose w1 .. w14 als large (for part 1) or as small (for part 2) as possible with 1 <= w1 .. w14 <= 9.
+// we can check the solution with the program below
 
 
 #include <iostream>
